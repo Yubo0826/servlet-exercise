@@ -1,2 +1,7 @@
 exercise\JsonServlet.class
+exercise\LoginServlet.class
+exercise\student\dao\StudentDAO.class
+exercise\StudentServlet.class
+exercise\DataProcessingServlet.class
+exercise\student\model\Student.class
 exercise\HelloWorldServlet.class
