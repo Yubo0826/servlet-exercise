@@ -3,9 +3,6 @@ package exercise;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.List;
-import java.util.stream.Collectors;
-
-import org.json.JSONObject;
 
 import jakarta.servlet.RequestDispatcher;
 import jakarta.servlet.ServletException;
@@ -19,6 +16,7 @@ import exercise.student.model.Student;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonParser;
 
 @WebServlet("/students")
@@ -100,10 +98,8 @@ public class StudentServlet extends HttpServlet {
             requestBody.append(line);
         }
         System.out.println(requestBody);
-  
         // 解析JSON数据
         JsonObject jsonObject = JsonParser.parseString(requestBody.toString()).getAsJsonObject();
-  
         // 从JSON中获取数据
         String name = jsonObject.get("name").getAsString();
         int age = jsonObject.get("age").getAsInt();
@@ -115,11 +111,23 @@ public class StudentServlet extends HttpServlet {
         Student newStudent = new Student();
         newStudent.setName(name);
         newStudent.setAge(age);
-        Boolean result = studentDAO.addStudent(newStudent);
-  
-        Gson gson = new Gson();
-        String json = gson.toJson(result);
-        response.getWriter().write(json);        
+
+        Boolean addResult = studentDAO.addStudent(newStudent);
+        JsonObject resultObject = new JsonObject();
+        resultObject.addProperty("addResult", addResult);
+        if (addResult) {
+          List<Student> updatedStudents = studentDAO.getAllStudents();
+          JsonArray studentsArray = new JsonArray();
+          for (Student student : updatedStudents) {
+              JsonObject studentObject = new JsonObject();
+              studentObject.addProperty("id", student.getId());
+              studentObject.addProperty("name", student.getName());
+              studentObject.addProperty("age", student.getAge());
+              studentsArray.add(studentObject);   //  add 方法用于添加复杂的结构，比如数组或对象。addProperty為簡單的鍵值
+          }
+          resultObject.add("students", studentsArray);
+        }
+        response.getWriter().write(resultObject.toString());
       } catch (Exception e) {
         e.printStackTrace();
         throw new ServletException("Error processing the request.", e);
@@ -140,22 +148,55 @@ public class StudentServlet extends HttpServlet {
 
     private void updateStudent(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        int id = Integer.parseInt(request.getParameter("id"));
-        String name = request.getParameter("name");
-        int age = Integer.parseInt(request.getParameter("age"));
-        Student updatedStudent = new Student();
-        updatedStudent.setId(id);
-        updatedStudent.setName(name);
-        updatedStudent.setAge(age);
-        boolean updateResult = studentDAO.updateStudent(updatedStudent);
-        request.setAttribute("updateResult", updateResult);
-        RequestDispatcher dispatcher = request.getRequestDispatcher("edit.jsp");
-        dispatcher.forward(request, response);
+        try {
+          // 從request提取資料
+          StringBuilder requestBody = new StringBuilder();
+          BufferedReader reader = request.getReader();
+          System.out.println(reader);
+          String line;
+          while ((line = reader.readLine()) != null) {
+              requestBody.append(line);
+          }
+          System.out.println(requestBody);
+          JsonObject jsonObject = JsonParser.parseString(requestBody.toString()).getAsJsonObject();
+          int id = jsonObject.get("id").getAsInt();
+          String name = jsonObject.get("name").getAsString();
+          int age = jsonObject.get("age").getAsInt();
+
+          // handle database
+          Student updatedStudent = new Student();
+          updatedStudent.setId(id);
+          updatedStudent.setName(name);
+          updatedStudent.setAge(age);
+          boolean updateResult = studentDAO.updateStudent(updatedStudent);
+
+          // handle response
+          request.setAttribute("updateResult", updateResult);
+          // RequestDispatcher dispatcher = request.getRequestDispatcher("edit.jsp");
+          // dispatcher.forward(request, response);
+        } catch (Exception e) {
+          // TODO: handle exception
+        }
+
+
+
+
+        // int id = Integer.parseInt(request.getParameter("id"));
+        // String name = request.getParameter("name");
+        // int age = Integer.parseInt(request.getParameter("age"));
+        // Student updatedStudent = new Student();
+        // updatedStudent.setId(id);
+        // updatedStudent.setName(name);
+        // updatedStudent.setAge(age);
+        // boolean updateResult = studentDAO.updateStudent(updatedStudent);
+        // request.setAttribute("updateResult", updateResult);
+        // RequestDispatcher dispatcher = request.getRequestDispatcher("edit.jsp");
+        // dispatcher.forward(request, response);
     }
 
     private void deleteStudent(HttpServletRequest request) {
       int id = Integer.parseInt(request.getParameter("id"));
       studentDAO.deleteStudent(id);
-  }
+    }
 }
 
